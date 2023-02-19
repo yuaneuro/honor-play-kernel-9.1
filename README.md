@@ -1,7 +1,8 @@
 # honor-play-kernel-9.1-kindle4jerry
 官方开源内核9.1小改  
 ## 功能
-解锁SELinux  
+解除ptrace禁用
+解锁SELinux
 解锁一些玄学调度器  
 试图用不同的编译器  
 ## 注意
