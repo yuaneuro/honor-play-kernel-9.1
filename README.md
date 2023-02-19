@@ -6,37 +6,59 @@
 试图用不同的编译器  
 ## 注意
 已经测试可以用的系统 9.1.0.312以及基于312刷的其他第三方系统  
-## 新版编译教程build5.sh或者更新
-编辑/kernel/build5.sh，里面开头有环境配置，里面有注释。  
-除了内核文件之外，还需要一个编译工具在注释里面有提到  
-直接执行biuld5.sh输出在/build_out里  
-## 老版编译教程build.sh
+## 编译教程
 ### 第零步 环境配置
+gcc version 9.4.0
+```shell
+apt install -y gcc
+apt install -y bison 
+apt install -y libssl-dev
+wget https://developer.arm.com/-/media/Files/downloads/gnu-a/9.2-2019.12/binrel/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu.tar.xz
+tar -xvf gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu.tar.xz
+```
+然后记得python软连接到你的python3上
+```shell
+ln -s /usr/bin/python3.8 /usr/bin/python
+python -v
+```
 编辑/kernel/build.sh，里面开头有环境配置，里面有注释。  
 除了内核文件之外，还需要一个编译工具在注释里面有提到  
 ### 第一步 编译
-输入 源码  
-cd到kernel下面执行 sh build.sh  
-/kernel下的build.sh用于编译内核，但是我建议你在编译之前打开文件配置一下环境,可以去翻sh里面的注释。  
-(p.s.这个过程可能会非常慢，表急，慢慢等，参数-j给太多也可能会出错(不跳出来就不对了)，表慌，错了就再跑一遍，支持断点续传的不要慌)  
-输出 /out/arch/arm64/boot/Image.gz  
-### 第二步 打包
-输入 把Image.gz丢到/kernel/tools里  
-/Kernel/tools/mk2.sh用于打包内核，文件里有参数的相关注释。  
-/Kernel/tools/mk1.sh用处同上，多了开机默认permissive的SELinux  
-输出 kernel.img 就能用了  
-或者，不用上述打包方法，直接把Image.gz丢到anykernel2里面REC刷入  
+根据自己的路径配置，不要一股脑复制
+```shell
+cd honor-play-kernel-9.1
+export PATH=$PATH:/root/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu/bin
+export CROSS_COMPILE=/root/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-
+export GCC_COLORS=auto
+export ARCH=arm64
+mkdir ../out
+mkdir ../build_out
+make ARCH=arm64 O=../out merge_kirin970_defconfig
+make ARCH=arm64 O=../out -j4
+cp -f ../out/arch/arm64/boot/Image.gz tools
+BUILD_DATE=`date +%Y%m%d`
+#permissive版打包
+cd tools/
+./mkbootimg --kernel Image.gz --base 0x0 --cmdline "loglevel=4 initcall_debug=n page_tracker=on unmovable_isolate1=2:192M,3:224M,4:256M printktimer=0xfff0a000,0x534,0x538 androidboot.selinux=permissive buildvariant=user" --tags_offset 0x07A00000 --kernel_offset 0x00080000 --ramdisk_offset 0x07C00000 --header_version 1 --os_version 9 --os_patch_level 2019-05-05  --output kernel-$BUILD_DATE-permissive.img
+#enforcing版打包
+./mkbootimg --kernel Image.gz --base 0x0 --cmdline "loglevel=4 initcall_debug=n page_tracker=on unmovable_isolate1=2:192M,3:224M,4:256M printktimer=0xfff0a000,0x534,0x538 androidboot.selinux=enforcing buildvariant=user" --tags_offset 0x07A00000 --kernel_offset 0x00080000 --ramdisk_offset 0x07C00000 --header_version 1 --os_version 9 --os_patch_level 2019-05-05  --output kernel-$BUILD_DATE-enforcing.img
+#把输出放到build_out并清理
+cp -f *.img ../../build_out
+rm -f Image.gz
+rm -f *.img
+cd ..
+```
+或者直接运行/kernel/build.sh，里面开头有环境配置，里面有注释。
+除了内核文件之外，还需要一个编译工具在注释里面有提到
+
+## 关于菊花如何解除ptrace禁用
+arch/arm64/configs/merge_kirin970_defconfig中添加`CONFIG_HUAWEI_PTRACE_POKE_ON=y`即可
+
 ## 关于菊花如何解锁selinux
-/kernel/arch/arm64/configs/merge_kirin970_defconfig中找到并且设置CONFIG_SECURITY_SELINUX_DEVELOP=y  
+arch/arm64/configs/merge_kirin970_defconfig中找到并且设置CONFIG_SECURITY_SELINUX_DEVELOP=y  
 在没用上述命令编译内核之前，慎用cmdline的androidboot.selinux=permissive那个方法停用selinux，菊花会让你开不开机的。  
 在用了上述命令编译之后，就可以用cmdline的androidboot.selinux=permissive的方法了，我已经在打包脚本/Kernel/tools/mk1.sh这个脚本里体现了  
-## 编译器
-我尝试用Clang或者高版本GCC代替官方的GCC4.9  
-build.sh	官方4.9  
-build3.sh	GCC9.2  
-build5.sh	GCC10  
-GCC新版本表现还可以，需要修的地方不多  
-Clang全部搬运到clang分支中，目前clang还存在问题，官方内核默认不支持clang，需要修的地方太多了  
+ 
 ## 关于调度
 CPU：Schedtutil+EAS在原生的表现比较好，但是在官方emui可能就不是那么好了  
 GPU：拿出了公版mali的调度器mali_ondemand参数方面有待调整，不过默认参数还可以  
