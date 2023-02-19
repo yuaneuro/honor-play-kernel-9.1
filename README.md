@@ -48,8 +48,6 @@ rm -f Image.gz
 rm -f *.img
 cd ..
 ```
-或者直接运行/kernel/build.sh，里面开头有环境配置，里面有注释。
-除了内核文件之外，还需要一个编译工具在注释里面有提到
 
 ## 关于菊花如何解除ptrace禁用
 arch/arm64/configs/merge_kirin970_defconfig中添加`CONFIG_HUAWEI_PTRACE_POKE_ON=y`即可
